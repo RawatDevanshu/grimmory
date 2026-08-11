@@ -3,7 +3,9 @@ package org.booklore.service.appsettings;
 import org.booklore.config.AppProperties;
 import org.booklore.config.security.service.AuthenticationService;
 import org.booklore.model.dto.BookLoreUser;
+import org.booklore.model.dto.settings.AppSettings;
 import org.booklore.model.dto.settings.AppSettingKey;
+import org.booklore.model.dto.settings.KomgaSettings;
 import org.booklore.model.entity.AppSettingEntity;
 import org.booklore.model.enums.AuditAction;
 import org.booklore.repository.AppSettingsRepository;
@@ -14,6 +16,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -24,8 +29,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class AppSettingServiceTest {
 
     @Mock
@@ -164,5 +172,51 @@ class AppSettingServiceTest {
                 .hasMessageContaining("Redirect URI must include a scheme");
 
         verify(appSettingsRepository, never()).save(any());
+    }
+
+    @Test
+    void getAppSettings_buildsKomgaSettingsDefault_whenNoRowsExist() throws Exception{
+        when(appSettingsRepository.findAll()).thenReturn(List.of());
+        when(appSettingsRepository.findByName(anyString())).thenReturn(null);
+        when(appProperties.getRemoteAuth()).thenReturn(new AppProperties.RemoteAuth());
+
+        AppSettings result = appSettingService.getAppSettings();
+
+        assertThat(result.getKomgaSettings()).isNotNull();
+        assertThat(result.getKomgaSettings().getRememberMeKey()).isNotBlank();
+        assertThat(result.getKomgaSettings().getRememberMeDurationInSeconds()).isEqualTo(2592000);
+
+        ArgumentCaptor<AppSettingEntity> captor = ArgumentCaptor.forClass(AppSettingEntity.class);
+        verify(appSettingsRepository, atLeastOnce()).save(captor.capture());
+        assertThat(captor.getAllValues())
+                .anyMatch(e -> "komga_settings".equals(e.getName()));
+    }
+
+    @Test
+    void getAppSettings_readsPersistedKomgaSettings() throws Exception {
+        AppSettingEntity komgaRow = new AppSettingEntity();
+        komgaRow.setName("komga_settings");
+        komgaRow.setVal("{\"rememberMeKey\":\"persistedKey\",\"rememberMeDurationInSeconds\":86400}");
+
+        when(appSettingsRepository.findAll()).thenReturn(List.of(komgaRow));
+        when(appSettingsRepository.findByName(anyString())).thenReturn(null);
+        when(appProperties.getRemoteAuth()).thenReturn(new AppProperties.RemoteAuth());
+
+        AppSettings result = appSettingService.getAppSettings();
+
+        assertThat(result.getKomgaSettings()).isNotNull();
+        assertThat(result.getKomgaSettings().getRememberMeKey()).isEqualTo("persistedKey");
+        assertThat(result.getKomgaSettings().getRememberMeDurationInSeconds()).isEqualTo(86400);
+    }
+
+    @Test
+    void defaultKomgaSettings_generatesUniqueKeys() {
+        KomgaSettings first = settingPersistenceHelper.getDefaultKomgaSettings();
+        KomgaSettings second = settingPersistenceHelper.getDefaultKomgaSettings();
+
+        assertThat(first.getRememberMeKey()).isNotBlank();
+        assertThat(second.getRememberMeKey()).isNotBlank();
+        assertThat(first.getRememberMeKey()).isNotEqualTo(second.getRememberMeKey());
+        assertThat(first.getRememberMeDurationInSeconds()).isEqualTo(2592000);
     }
 }
