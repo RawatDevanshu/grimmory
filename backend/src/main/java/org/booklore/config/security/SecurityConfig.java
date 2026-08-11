@@ -113,7 +113,7 @@ public class SecurityConfig {
         http
                 .securityMatcher("/komga/api/v1/**", "/komga/api/v2/**")
                 .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().authenticated()
                 )
