@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 
 import org.booklore.config.AppProperties;
 import org.booklore.config.security.service.AuthenticationService;
@@ -233,18 +234,6 @@ class AppSettingServiceTest {
     }
 
     @Test
-    void updateSetting_rejectsInvalidKomgaSettingsType() {
-        assertThatThrownBy(() -> appSettingService.updateSetting(
-                AppSettingKey.KOMGA_SETTINGS,
-                "invalid string"
-        ))
-        .isInstanceOf(Exception.class)
-        .hasMessageContaining("Komga settings must be a valid KomgaSettings object");
-
-        verify(appSettingsRepository, never()).save(any());
-    }
-
-    @Test
     void updateSetting_rejectsKomgaSettingsWithNullKey() {
         KomgaSettings settings = new KomgaSettings();
         settings.setRememberMeKey(null);
@@ -340,4 +329,42 @@ class AppSettingServiceTest {
         assertThat(savedSetting.getVal()).contains("validKey123");
         assertThat(savedSetting.getVal()).contains("86400");
     }
+
+    @Test
+    void updateSetting_acceptsKomgaSettingsAsMap() throws Exception {
+        Map<String, Object> settings = Map.of(
+                "rememberMeKey", "validKey123",
+                "rememberMeDurationInSeconds", 86400
+        );
+
+        appSettingService.updateSetting(
+                AppSettingKey.KOMGA_SETTINGS,
+                settings
+        );
+
+        ArgumentCaptor<AppSettingEntity> captor =
+                ArgumentCaptor.forClass(AppSettingEntity.class);
+
+        verify(appSettingsRepository).save(captor.capture());
+
+        assertThat(captor.getValue().getName())
+                .isEqualTo(AppSettingKey.KOMGA_SETTINGS.toString());
+        assertThat(captor.getValue().getVal()).contains("validKey123");
+        assertThat(captor.getValue().getVal()).contains("86400");
+    }
+
+	@Test
+	void updateSetting_rejectsIncompleteKomgaSettingsMap() {
+		Map<String, Object> settings = Map.of(
+				"rememberMeKey", "validKey123"
+		);
+
+		assertThatThrownBy(() -> appSettingService.updateSetting(
+				AppSettingKey.KOMGA_SETTINGS,
+				settings
+		))
+				.hasMessageContaining("rememberMeDurationInSeconds");
+
+		verify(appSettingsRepository, never()).save(any());
+	}
 }

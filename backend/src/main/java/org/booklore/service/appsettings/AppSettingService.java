@@ -21,6 +21,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.util.LinkedHashSet;
@@ -39,12 +40,14 @@ public class AppSettingService {
     private final SettingPersistenceHelper settingPersistenceHelper;
     private final AuthenticationService authenticationService;
     private final AuditService auditService;
+    private final ObjectMapper objectMapper;
 
     public AppSettingService(AppProperties appProperties, SettingPersistenceHelper settingPersistenceHelper, @Lazy AuthenticationService authenticationService, @Lazy AuditService auditService) {
         this.appProperties = appProperties;
         this.settingPersistenceHelper = settingPersistenceHelper;
         this.authenticationService = authenticationService;
         this.auditService = auditService;
+        this.objectMapper = new ObjectMapper();
     }
 
     @Cacheable("appSettings")
@@ -71,6 +74,7 @@ public class AppSettingService {
         }
 
         if (key == AppSettingKey.KOMGA_SETTINGS) {
+            val = objectMapper.convertValue(val, KomgaSettings.class);
             validateKomgaSettings(val);
         }
 
