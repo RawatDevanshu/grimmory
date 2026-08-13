@@ -70,6 +70,10 @@ public class AppSettingService {
             validateOidcForceOnlyMode(val);
         }
 
+        if (key == AppSettingKey.KOMGA_SETTINGS) {
+            validateKomgaSettings(val);
+        }
+
         var setting = settingPersistenceHelper.appSettingsRepository.findByName(key.toString());
         if (setting == null) {
             setting = new AppSettingEntity();
@@ -98,6 +102,32 @@ public class AppSettingService {
         if (details == null || details.getIssuerUri() == null || details.getIssuerUri().isBlank()
                 || details.getClientId() == null || details.getClientId().isBlank()) {
             throw ApiError.GENERIC_BAD_REQUEST.createException("Cannot enable OIDC-only mode: OIDC must be configured with issuer URI and client ID");
+        }
+    }
+
+    private void validateKomgaSettings(Object val) {
+        if (val == null) {
+            throw ApiError.GENERIC_BAD_REQUEST.createException("Komga settings cannot be null");
+        }
+
+        if (!(val instanceof KomgaSettings)) {
+            throw ApiError.GENERIC_BAD_REQUEST.createException("Komga settings must be a valid KomgaSettings object");
+        }
+
+        KomgaSettings settings = (KomgaSettings) val;
+
+        // Validate rememberMeKey
+        if (settings.getRememberMeKey() == null || settings.getRememberMeKey().isBlank()) {
+            throw ApiError.GENERIC_BAD_REQUEST.createException("Komga rememberMeKey cannot be null or blank");
+        }
+
+        // Validate remmeberMeDurationInSeconds
+        if (settings.getRememberMeDurationInSeconds() == null) {
+            throw ApiError.GENERIC_BAD_REQUEST.createException("Komga rememberMeDurationInSeconds cannot be null");
+        }
+
+        if (settings.getRememberMeDurationInSeconds() <= 0) {
+            throw ApiError.GENERIC_BAD_REQUEST.createException("Komga rememberMeDurationInSeconds must be a positive integer");
         }
     }
 
