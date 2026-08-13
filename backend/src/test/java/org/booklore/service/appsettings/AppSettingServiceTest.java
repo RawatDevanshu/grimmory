@@ -53,7 +53,7 @@ class AppSettingServiceTest {
     @BeforeEach
     void setUp() {
         settingPersistenceHelper = new SettingPersistenceHelper(appSettingsRepository, new ObjectMapper());
-        appSettingService = new AppSettingService(appProperties, settingPersistenceHelper, authenticationService, auditService);
+        appSettingService = new AppSettingService(appProperties, settingPersistenceHelper, authenticationService, auditService, new ObjectMapper());
 
         var permissions = new BookLoreUser.UserPermissions();
         permissions.setAdmin(true);
